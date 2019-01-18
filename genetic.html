@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B"
+	 crossorigin="anonymous">
+	<title>math.js | plot</title>
+	<script src="https://unpkg.com/mathjs@5.2.2/dist/math.min.js"></script>
+
+	<script src="https://cdn.plot.ly/plotly-1.35.2.min.js"></script>
+
+	<style>
+		input[type=text] {
+      width: 300px;
+    }
+    input {
+      padding: 6px;
+    }
+    body, html, input {
+      font-family: sans-serif;
+      font-size: 11pt;
+
+    }
+    form {
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+	<header class="blog-header py-3">
+		<div class="row flex-nowrap justify-content-between align-items-center">
+			<div class="col-12 text-center">
+				<a class="blog-header-logo text-dark" href="#">Dogmatic Skeptic</a>
+			</div>
+		</div>
+	</header>
+
+	<form id="form">
+		<label for="points">Enter points correlating to a line:</label>
+		<input type="text" id="eq" value="0 5 1 10 2 15" />
+		<input type="submit" value="Begin Genetic Algorithm" />
+	</form>
+
+	<div id="plot"></div>
+
+	<div class="jumbotron p-3 p-md-5 text-white rounded bg-dark">
+		<div class="col-md-6 px-0">
+			<h1 class="display-4 font-italic">This is a chatbot</h1>
+			<p class="lead my-3">Here is <a href="https://www.github.com">Test</a> </p>
+		</div>
+	</div>
+
+	<script>
+
+		function drawTest(cohorts) {
+			var frameSteps = []
+			var framesCohort = []
+			var firstData
+			for (var i = 0; i < cohorts.length; i++) {
+				const datum = new Array(cohorts[i].length)
+				for (var j = 0; j < cohorts[i].length; j++) {
+					const expression = getOrganismSlope(cohorts[i][j]) + " " + "* x +" + " " + getOrganismYint(cohorts[i][j])
+					const expr = math.compile(expression)
+					const xValues = math.range(-10, 10, 0.01).toArray()
+					const yValues = xValues.map(function (x) {
+						return expr.eval({ x: x })
+					})
+					const trace = {
+						x: xValues,
+						y: yValues,
+						type: 'scatter'
+					}
+					datum[j] = trace
+				}
+				if (i == 0) {
+					firstData = datum
+				}
+				framesCohort.push({
+					name: i,
+					data: datum
+				})
+				frameSteps.push({
+					label: i,
+					method: 'animate',
+					args: [[i], {
+						mode: 'immediate',
+						frame: { redraw: false, duration: 500 },
+						transition: { duration: 500 }
+					}]
+				})
+			}
+
+			Plotly.plot('plot', {
+				data: firstData,
+				layout: {
+					sliders: [{
+						pad: { t: 30 },
+						x: 0.05,
+						len: 0.95,
+						currentvalue: {
+							xanchor: 'right',
+							prefix: 'generation: ',
+							font: {
+								color: '#888',
+								size: 20
+							}
+						},
+						transition: { duration: 500 },
+						// By default, animate commands are bound to the most recently animated frame:
+						steps: frameSteps
+					}],
+					updatemenus: [{
+						type: 'buttons',
+						showactive: false,
+						x: 0.05,
+						y: 0,
+						xanchor: 'right',
+						yanchor: 'top',
+						direction: 'left',
+						pad: { t: 60, r: 20 },
+						buttons: [{
+							label: 'Play',
+							method: 'animate',
+							args: [null, {
+								fromcurrent: true,
+								frame: { redraw: false, duration: 1000 },
+								transition: { duration: 500 }
+							}]
+						}, {
+							label: 'Pause',
+							method: 'animate',
+							args: [[null], {
+								mode: 'immediate',
+								frame: { redraw: false, duration: 0 }
+							}]
+						}]
+					}]
+				},
+				// The slider itself does not contain any notion of timing, so animating a slider
+				// must be accomplished through a sequence of frames. Here we'll change the color
+				// and the data of a single trace:
+				frames: framesCohort
+			})
+		}
+
+		function runalgorithm() {
+			//	var tobj = {}
+			//	tobj.genes = 
+			//	tobj.somethingelse = 
+			//        var tobjar = []
+			//        tobjarr.append(tobj
+			var plot = document.getElementById('eq').value.split(" ")
+			var rplot = new Array(plot.length / 2)
+			for (var i = 0; i < plot.length; i += 2) {
+				var temparr = [plot[i], plot[i + 1]]
+				rplot[i / 2] = temparr
+			}
+			return geneticalgorithm(30, rplot, 10, 0.01)
+
+		}
+
+
+
+		function geneticalgorithm(generations, plot, popsize, mutationchance) {
+			var history = new Array(generations)
+			var cohort = new Array(popsize)
+			for (var i = 0; i < popsize; i++) {
+				var genes = new Array(14)
+				for (var j = 0; j < 14; j++) {
+					var random = Math.random()
+					if (random < 0.5) {
+						genes[j] = true
+					}
+					else {
+						genes[j] = false
+					}
+				}
+				cohort[i] = genes
+				genes.fitnessScore = 0
+			}
+			//run generations for x generations
+			for (var i = 0; i < generations; i++) {
+				cohort = runGeneration(cohort, mutationchance, plot)
+				history[i] = cohort
+			}
+			for (var i = 0; i < cohort.length - 1; i++) {
+				cohort[i].fitnessScore = fitnessScore(cohort[i], plot)
+			}
+			cohort.sort(function (a, b) {
+				return a.fitnessScore = b.fitnessScore
+			})
+			bestGenes = cohort[0].genes
+			return history
+		}
+
+		function fitnessScore(o, plot) {
+			var score = 0
+			var slope = getOrganismSlope(o)
+			var yint = getOrganismYint(o)
+			for (var i = 0; i < plot.length; i++) {
+				score += Math.abs(slope * plot[i][0] + yint - plot[i][1])
+			}
+			return score
+		}
+
+		function getOrganismSlope(o) {
+			var slope = 0
+			for (var i = 0; i < 7; i++) {
+				if (i == 0 && o[i] == true) {
+					slope += 1
+				}
+				else if (o[i] == true) {
+					slope += Math.pow(2, i)
+				}
+			}
+			return slope
+		}
+
+		function getOrganismYint(o) {
+			var yint = 0
+			for (var i = 7; i < 14; i++) {
+				if (i == 7 && o[i] == true) {
+					yint += 1
+				}
+				else if (o[i] == true) {
+					yint += Math.pow(2, i)
+				}
+			}
+			return yint
+		}
+
+		function runGeneration(cohort, mutationchance, plot) {
+			nextCohort = new Array(cohort.length)
+			for (var i = 0; i < cohort.length; i++) {
+				cohort[i].fitnessScore = fitnessScore(cohort[i], plot)
+			}
+			cohort.sort(function (a, b) {
+				return a.fitnessScore - b.fitnessScore
+			})
+			var parent1 = cohort[0]
+			var parent2 = cohort[1]
+			for (var i = 0; i < cohort.length; i += 2) {
+				var children = breed(parent1, parent2, mutationchance)
+				nextCohort[i] = children[0]
+				nextCohort[i + 1] = children[1]
+			}
+			return nextCohort
+		}
+
+		function breed(parent1, parent2, mutationchance) {
+			var children = new Array(2)
+			var crossOverPoint = parseInt(Math.random() * 14, 10)
+			var child1 = new Array(14)
+			for (var i = 0; i < crossOverPoint; i++) {
+				child1[i] = parent1[i]
+			}
+			for (var i = crossOverPoint; i < 14; i++) {
+				child1[i] = parent2[i]
+			}
+			var child2 = new Array(14)
+			for (var i = 0; i < crossOverPoint; i++) {
+				child2[i] = parent2[i]
+			}
+			for (var i = crossOverPoint; i < 14; i++) {
+				child2[i] = parent1[i]
+			}
+			//mutation
+			for (var i = 0; i < 14; i++) {
+				if (Math.random() < mutationchance) {
+					if (child1[i] == false) {
+						child1[i] = true
+					}
+					else {
+						child1[i] = false
+					}
+				}
+			}
+			for (var i = 0; i < 14; i++) {
+				if (Math.random() < mutationchance) {
+					if (child2[i] == false) {
+						child2[i] = true
+					}
+					else {
+						child2[i] = false
+					}
+				}
+			}
+			children[0] = child1
+			children[1] = child2
+			return children
+		}
+
+		document.getElementById('form').onsubmit = function (event) {
+			event.preventDefault()
+			// draw(runalgorithm())
+			drawTest(runalgorithm())
+		}
+	</script>
+
+	<!-- Optional JavaScript -->
+	<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+	 crossorigin="anonymous">
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+	 crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/js/bootstrap.min.js" integrity="sha384-o+RDsa0aLu++PJvFqy8fFScvbHFLtbvScb8AjopnFD+iEQ7wo/CG0xlczd+2O/em"
+	 crossorigin="anonymous"></script>
+
+</body>
+
+</html>
